@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { getHealth } from '../lib/api'
   import { messages, isLoading, addMessage } from '../stores/chat'
   import { navigate } from '../stores/ui'
-  import { licenseStatus, fetchLicenseStatus } from '../stores/license'
+  import { licenseStatus, fetchLicenseStatus, startSession, endSession } from '../stores/license'
   import { theme } from '../stores/theme'
   import Input from '../components/Input.svelte'
   import LicenseBanner from '../components/LicenseBanner.svelte'
@@ -56,6 +56,7 @@
     try { health = await getHealth() } catch (e) { console.error('Failed to fetch health:', e) }
     try { systemInfo = await api.get('system/info').json<SystemInfo>() } catch (e) { console.error('Failed to fetch system info:', e) }
     try { await fetchLicenseStatus() } catch (e) { console.error('Failed to fetch license status:', e) }
+  try { await startSession() } catch (e) { console.error('Failed to start session:', e) }
   })
 
   function handleABResult(result: any) {
@@ -77,7 +78,7 @@
     ddaError = null
     ddaAnalysisResult = null
     try {
-      const response = await api.post('api/v1/deep_analysis/run', {
+      const response = await api.post('api/v3.3.1/deep_analysis/run', {
         json: {
           tags: ddaSelectedTags,
           period: ddaPeriod,
@@ -206,7 +207,7 @@
   $effect(() => {
     if (showDeepAnalysisPanel && ddaTags.length === 0) {
       console.log('🔄 Loading DDA tags...')
-      api.get('api/v1/deep_analysis/tags').json().then((tags: any[]) => {
+      api.get('api/v3.3.1/deep_analysis/tags').json().then((tags: any[]) => {
         console.log('✓ DDA tags loaded:', tags.length)
         ddaTags = tags
         if (tags.length > 0 && ddaSelectedTags.length === 0) {
@@ -224,7 +225,7 @@
   <header class="bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors">
     <div class="flex items-center gap-3">
       <h1 class="text-base font-mono text-neutral-500 dark:text-neutral-400 tracking-tight">
-        SCADA.AI <span class="text-neutral-400 dark:text-neutral-500">v3.3.0.1.1</span>
+        SCADA.AI <span class="text-neutral-400 dark:text-neutral-500">v3.3.1</span>
       </h1>
     </div>
     

@@ -1,7 +1,8 @@
 <!-- svelte-ignore a11y_label_has_associated_control -->
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { navigate } from '../stores/ui'
+import { startSession, endSession } from '../stores/license'
   import { Activity, AlertCircle, ArrowLeft, CheckCircle, Database, DollarSign, Droplet, Edit2, FileText, Flame, Key, Moon, Plus, RefreshCw, Save, Server, Sun, Trash2, Wrench, Zap } from 'lucide-svelte'
   import { theme } from '../stores/theme'
   import api from '../lib/api'
@@ -473,7 +474,7 @@
     </button>
     <div class="flex items-center gap-3 flex-1">
       <h1 class="text-xl font-semibold text-neutral-900">Конфигуратор</h1>
-      <span class="text-sm text-neutral-500">v3.3.0.1.1</span>
+      <span class="text-sm text-neutral-500">v3.3.1</span>
     </div>
     <div class="flex gap-1 bg-neutral-100 rounded p-1">
       <button
