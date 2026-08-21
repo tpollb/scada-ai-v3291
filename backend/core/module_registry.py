@@ -109,6 +109,50 @@ class ModuleRegistry:
 
         return self._modules
 
+
+    def load_all_with_license(self, enabled: list[str] | None = None) -> Dict[str, Module]:
+        """Загружает модули с учётом лицензии (feature gates)"""
+        from core.license import get_license_manager
+        
+        license_mgr = get_license_manager()
+        
+        # Определяем разрешённые модули
+        if license_mgr and license_mgr.is_valid():
+            allowed_features = set(license_mgr.get_features())
+            # Базовые модули всегда разрешены
+            allowed_features.update(['hello', 'logs'])
+            log.info("License features loaded", features=sorted(allowed_features))
+        else:
+            # Если лицензия невалидна — только базовые модули
+            allowed_features = {'hello', 'logs'}
+            log.warning("License invalid or not loaded, loading only base modules",
+                       error=license_mgr.load_error if license_mgr else "LicenseManager not initialized")
+        
+        # Фильтруем enabled список
+        available = self.discover_modules()
+        
+        if enabled:
+            # Фильтруем переданный список по лицензии
+            to_load = [m for m in enabled if m in allowed_features]
+            skipped = [m for m in enabled if m not in allowed_features]
+            if skipped:
+                log.warning("Modules skipped due to license restrictions", skipped=skipped)
+        else:
+            # Если enabled не передан — загружаем все разрешённые
+            to_load = [m for m in available if m in allowed_features]
+        
+        # Загружаем модули
+        for name in to_load:
+            if name in available:
+                self.load_module(name)
+            else:
+                log.warning(f"Module not found in available: {name}")
+        
+        log.info("Modules loaded with license filter", 
+                loaded=len(self._modules), 
+                allowed=sorted(allowed_features))
+        return self._modules
+
     def get_module(self, name: str) -> Optional[Module]:
         """Get a loaded module"""
         return self._modules.get(name)

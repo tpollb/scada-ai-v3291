@@ -3,8 +3,10 @@
   import { getHealth } from '../lib/api'
   import { messages, isLoading, addMessage } from '../stores/chat'
   import { navigate } from '../stores/ui'
+import { fetchLicenseStatus } from '../stores/license'
   import { theme } from '../stores/theme'
   import Input from '../components/Input.svelte'
+import LicenseBanner from '../components/LicenseBanner.svelte'
   import SystemLogsPanel from '../components/SystemLogsPanel.svelte'
   import DeepAnalysisControls from '../components/DeepAnalysisControls.svelte'
   import DeepAnalysisResults from '../components/DeepAnalysisResults.svelte'
@@ -48,6 +50,7 @@
   onMount(async () => {
     try { health = await getHealth() } catch (e) { console.error('Failed to fetch health:', e) }
     try { systemInfo = await api.get('system/info').json<SystemInfo>() } catch (e) { console.error('Failed to fetch system info:', e) }
+  try { await fetchLicenseStatus() } catch (e) { console.error('Failed to fetch license status:', e) }
   })
 
   
@@ -237,9 +240,10 @@ async function handleSend(message: string) {
   <header class="bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors">
     <div class="flex items-center gap-3">
       <h1 class="text-base font-mono text-neutral-500 dark:text-neutral-400 tracking-tight">
-        SCADA.AI <span class="text-neutral-400 dark:text-neutral-500">v3.2.9.1</span>
+        SCADA.AI <span class="text-neutral-400 dark:text-neutral-500">v3.3.0</span>
       </h1>
     </div>
+    <LicenseBanner />
     <div class="flex items-center gap-2">
       {#if lastVoiceText}
         <button type="button" onclick={() => speak(lastVoiceText!)} class="p-2 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-neutral-700 dark:text-neutral-300" title="Повторить голосом">

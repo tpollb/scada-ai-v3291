@@ -1,16 +1,14 @@
-"""SCADA.AI v3.2.9.1 — Main application"""
+"""SCADA.AI v3.3.0.1 — Main application"""
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from structlog import get_logger
-
 from config.settings import settings
 from core.logger import system_logger, install_structlog_bridge
 
 log = get_logger()
-
 
 # ============================================================================
 # Фильтр для uvicorn access log — убирает спам от polling /system/logs
@@ -26,15 +24,13 @@ class AccessLogFilter(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(AccessLogFilter())
 
-
 # Устанавливаем bridge ДО создания app — чтобы все логи шли в UI
 install_structlog_bridge()
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info(f"Starting {settings.app_name} v{settings.app_version}")
-
+    
     # Проверяем БД
     try:
         from core.db import get_pool
@@ -46,17 +42,29 @@ async def lifespan(app: FastAPI):
         log.error("PostgreSQL connection failed", error=str(e))
         log.warning("Backend will start, but health module will fail on DB queries")
 
+    # Инициализация License Manager
+    try:
+        from core.license import init_license_manager
+        mgr = init_license_manager(
+            license_file=settings.license_file,
+            public_key=settings.license_public_key,
+            grace_period_days=settings.license_grace_period_days
+        )
+        if mgr.is_valid():
+            log.info("License validated", customer=mgr.license.customer, type=mgr.license.license_type.value)
+        else:
+            log.warning("License invalid or expired", error=mgr.load_error)
+    except Exception as e:
+        log.error("License initialization failed", error=str(e))
+
     # Загружаем модули
     from core.module_registry import get_registry
     from core.tool_executor import get_executor
-
     registry = get_registry()
-    registry.load_all(settings.enabled_modules_list)
-
+    registry.load_all_with_license(settings.enabled_modules_list)
     executor = get_executor()
     for tool in registry.get_all_tools():
         executor.register_tool(name=tool["name"], func=tool["function"], schema=tool)
-
     log.info(f"Loaded {len(registry._modules)} modules, {len(executor._tools)} tools")
 
     # Инициализируем LLM provider
@@ -78,9 +86,7 @@ async def lifespan(app: FastAPI):
         log.info("Database pool closed")
     except Exception as e:
         log.warning("Error closing database pool", error=str(e))
-
     log.info(f"{settings.app_name} stopped")
-
 
 # ============================================================================
 # Создаём FastAPI приложение
@@ -94,12 +100,15 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# License Middleware
+from core.middleware.license import LicenseMiddleware
+app.add_middleware(LicenseMiddleware)
 
 @app.get("/")
 async def root():
@@ -108,7 +117,6 @@ async def root():
         "version": settings.app_version,
         "status": "ok"
     }
-
 
 @app.get("/health")
 async def health():
@@ -120,7 +128,6 @@ async def health():
         "modules": list(registry._modules.keys()),
         "tools": len(get_executor()._tools),
     }
-
 
 @app.get("/debug/routes")
 async def debug_routes():
@@ -134,12 +141,10 @@ async def debug_routes():
         })
     return {"routes": routes}
 
-
 # ============================================================================
 # Подключаем роутеры
 # ============================================================================
-from api.routes import chat, config, health, system, docs, energy, analytics, deep_analysis  # noqa: E402
-
+from api.routes import chat, config, health, system, docs, energy, analytics, deep_analysis, license  # noqa: E402
 app.include_router(chat.router, tags=["chat"])
 app.include_router(config.router, tags=["config"])
 app.include_router(health.router)
@@ -148,17 +153,12 @@ app.include_router(docs.router)
 app.include_router(energy.router)
 app.include_router(analytics.router)
 app.include_router(deep_analysis.router)
-
-app.include_router(deep_analysis.router)
-
-
+app.include_router(license.router)
 log.info("All routers registered")
-
 
 if __name__ == "__main__":
     import uvicorn
     system_logger.info("Application starting", host=settings.host, port=settings.port)
     system_logger.info("Database configured", host=settings.db_host)
     system_logger.info("LLM configured", model=settings.yandex_gpt_model)
-    
     uvicorn.run("main:app", host=settings.host, port=settings.port, reload=settings.debug)
