@@ -20,6 +20,7 @@ ALLOWED_FILES = [
     "DDA.md",
     "SEASON_ANALISYS.md",
     "AB_ANALYSIS.md",
+    "LICENSING.md"
 ]
 
 

@@ -20,7 +20,7 @@
 | `standard` | + `analytics` | 1 год |
 | `enterprise` | + `deep_analysis`, без лимитов | 1–3 года |
 
-!!! note
+~~~ note
     Базовые модули `hello` и `logs` доступны всегда, даже при истекшей лицензии, для базовой диагностики.
 
 ## ⏳ Grace Period (Льготный период)
@@ -44,7 +44,7 @@
 
 ### 1. Генерация ключей (выполняется один раз)
 
-!!! code-block bash
+~~~ code-block bash
     python scripts/generate_keys.py
 
 Создаёт:
@@ -53,7 +53,7 @@
 
 ### 2. Генерация файла лицензии
 
-!!! code-block bash
+~~~ code-block bash
     python scripts/generate_license.py
 
 Создаёт файл `license.lic` в корне проекта.
@@ -62,7 +62,7 @@
 
 1. Поместите файл `license.lic` в корень проекта
 2. Убедитесь, что в `.env` указаны корректные пути (по умолчанию настроено автоматически):
-   !!! code-block env
+   ~~~ code-block env
        LICENSE_FILE=license.lic
        LICENSE_PUBLIC_KEY=backend/core/license/keys/public_key.pem
        LICENSE_GRACE_PERIOD_DAYS=3
@@ -72,7 +72,7 @@
 
 ### Через API
 
-!!! code-block bash
+~~~ code-block bash
     curl http://localhost:8081/api/v1/license/status
     curl http://localhost:8081/api/v1/license/info
 
@@ -82,7 +82,7 @@
 
 ## 🏗️ Структура файлов
 
-!!! code-block
+~~~ code-block
     backend/core/license/
     ├── __init__.py              # Экспорт LicenseManager
     ├── models.py                # Pydantic модели (License, LicenseStatus, LicenseType)
@@ -114,6 +114,6 @@
 
 ## 📝 Зависимости
 
-!!! code-block
+~~~ code-block
     PyJWT[crypto]>=2.8.0
     cryptography>=41.0.0
