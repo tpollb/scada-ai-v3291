@@ -134,3 +134,30 @@ export async function endSession() {
     console.error('❌ Failed to end session:', e)
   }
 }
+
+
+export async function uploadLicense(file: File): Promise<{success: boolean, message: string}> {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await fetch('http://localhost:8081/api/v1/license/upload', {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      return { success: false, message: error.detail || `HTTP ${response.status}` }
+    }
+    
+    const result = await response.json()
+    
+    // Обновляем статус после успешной загрузки
+    await fetchLicenseStatus()
+    
+    return { success: true, message: result.message || 'Лицензия успешно загружена' }
+  } catch (e: any) {
+    return { success: false, message: e?.message || 'Ошибка соединения' }
+  }
+}
