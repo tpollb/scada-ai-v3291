@@ -1,12 +1,17 @@
-"""Deep Analysis API router — connects module api.py to FastAPI"""
-from fastapi import APIRouter
+"""Deep Analysis API router — connects module api.py to FastAPI.
 
-# Импортируем router из модуля
+Доступ: только admin и engineer.
+"""
+from fastapi import APIRouter, Depends
+
 from modules.deep_analysis.api import router as module_router
+from core.auth.dependencies import require_role
+from core.auth.models import UserRole
 
-# Реэкспортируем с правильным именем
-deep_analysis_router = APIRouter(prefix="/api/v1")
+deep_analysis_router = APIRouter(
+    prefix="/api/v1",
+    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.ENGINEER))]
+)
 deep_analysis_router.include_router(module_router)
 
-# Для обратной совместимости — также экспортируем как router
 router = deep_analysis_router

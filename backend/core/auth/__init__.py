@@ -10,3 +10,5 @@ __all__ = [
     'create_access_token', 'decode_access_token',
     'UserStorage', 'get_user_storage'
 ]
+
+from .dependencies import get_current_user, require_role

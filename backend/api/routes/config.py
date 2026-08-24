@@ -1,5 +1,5 @@
 """Config API — управление модулями, промптами и системными настройками"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from structlog import get_logger
 from pathlib import Path

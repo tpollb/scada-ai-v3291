@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount, onDestroy } from 'svelte'
+import { get } from 'svelte/store'
 import { getHealth } from '../lib/api'
 import { messages, isLoading, addMessage } from '../stores/chat'
 import { navigate } from '../stores/ui'
@@ -182,10 +183,13 @@ function speak(text: string) {
 
 function handleCapability(cap: any) {
   if (cap.action === 'config') {
-    navigate('config')
-  } else {
-    handleSend(cap.text)
+    const user = get(currentUser)
+    if (user && (user.role === 'admin' || user.role === 'engineer')) {
+      navigate('config')
+    }
+    return
   }
+  handleSend(cap.text)
 }
 
 function formatTime(iso: string | null): string {
@@ -243,12 +247,16 @@ $effect(() => {
           <Volume2 size={18} />
         </button>
       {/if}
+      {#if $currentUser?.role !== 'boss'}
       <button type="button" onclick={() => showLogsPanel = !showLogsPanel} class="p-2 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-neutral-700 dark:text-neutral-300" title={showLogsPanel ? 'Скрыть логи' : 'Показать логи'}>
         <Terminal size={18} />
       </button>
+      {/if}
+      {#if $currentUser?.role === 'admin' || $currentUser?.role === 'engineer'}
       <button type="button" onclick={() => showDeepAnalysisPanel = !showDeepAnalysisPanel} class="p-2 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-neutral-700 dark:text-neutral-300" title={showDeepAnalysisPanel ? 'Скрыть анализ' : 'Deep Analysis'}>
         <Activity size={18} />
       </button>
+      {/if}
       <button type="button" onclick={() => theme.toggle()} class="p-2 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-neutral-700 dark:text-neutral-300" title={$theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>
         {#if $theme === 'dark'}
           <Sun size={18} />
@@ -256,9 +264,11 @@ $effect(() => {
           <Moon size={18} />
         {/if}
       </button>
+      {#if $currentUser?.role === 'admin' || $currentUser?.role === 'engineer'}
       <button type="button" onclick={() => navigate('config')} class="p-2 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-neutral-700 dark:text-neutral-300" title="Конфигуратор">
         <Settings size={18} />
       </button>
+      {/if}
       
       <div class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 ml-2">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>

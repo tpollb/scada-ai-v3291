@@ -3,12 +3,14 @@
 import { onMount, onDestroy } from 'svelte'
 import { navigate } from '../stores/ui'
 import { startSession, endSession } from '../stores/license'
-import { Activity, AlertCircle, ArrowLeft, CheckCircle, Database, DollarSign, Droplet, Edit2, FileText, Flame, Key, Moon, Plus, RefreshCw, Save, Server, Shield, Sun, Trash2, Wrench, Zap } from 'lucide-svelte'
+import { Activity, AlertCircle, ArrowLeft, CheckCircle, Database, DollarSign, Droplet, Edit2, FileText, Flame, Key, Moon, Plus, RefreshCw, Save, Server, Shield, Sun, Trash2, Users, Wrench, Zap } from 'lucide-svelte'
 import { theme } from '../stores/theme'
 import api from '../lib/api'
 import DocsViewer from '../components/DocsViewer.svelte'
 import DDAConfigPanel from '../components/config/DDAConfigPanel.svelte'
 import LicensePanel from '../components/LicensePanel.svelte'
+import UsersPanel from '../components/UsersPanel.svelte'
+import { currentUser } from '../stores/auth'
 
 interface ModuleInfo {
   name: string
@@ -68,7 +70,7 @@ interface EnergyConfig {
   heat: EnergyResourceConfig
 }
 
-let activeTab = $state<'modules' | 'system' | 'docs' | 'energy' | 'dda' | 'license'>('modules')
+let activeTab = $state<'modules' | 'system' | 'docs' | 'energy' | 'dda' | 'license' | 'users'>('modules')
 let modules = $state<ModuleInfo[]>([])
 let envConfig = $state<EnvConfig | null>(null)
 let loading = $state(true)
@@ -480,6 +482,13 @@ async function saveLogsPollInterval() {
         <Shield size={14} />
         Лицензия
       </button>
+        <!-- ВКЛАДКА ПОЛЬЗОВАТЕЛИ (только для admin) -->
+        {#if $currentUser?.role === 'admin'}
+        <button type="button" onclick={() => activeTab = 'users'} class="px-4 py-1.5 text-sm font-medium rounded transition flex items-center gap-2 {activeTab === 'users' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'}">
+          <Users size={14} />
+          Пользователи
+        </button>
+        {/if}
     </div>
   </header>
 
@@ -813,7 +822,11 @@ async function saveLogsPollInterval() {
     <div class="flex-1 overflow-y-auto p-6">
       <LicensePanel />
     </div>
-  {/if}
+  {:else if activeTab === 'users'}
+<div class="flex-1 overflow-y-auto p-6">
+<UsersPanel />
+</div>
+{/if}
 
   {#if editingPrompt}
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -6,7 +6,7 @@
       "role": "admin",
       "display_name": "Администратор",
       "created_at": "2026-08-24 10:44:14.981788",
-      "last_login": "2026-08-24 14:22:58.370096"
+      "last_login": "2026-08-24 15:27:14.039706"
     },
     {
       "username": "engineer",
@@ -22,7 +22,7 @@
       "role": "operator",
       "display_name": "Оператор",
       "created_at": "2026-08-24 10:44:15.404835",
-      "last_login": null
+      "last_login": "2026-08-24 15:27:00.167616"
     },
     {
       "username": "boss",
@@ -30,7 +30,15 @@
       "role": "boss",
       "display_name": "Руководитель",
       "created_at": "2026-08-24 10:44:15.612373",
-      "last_login": "2026-08-24 14:33:52.129673"
+      "last_login": "2026-08-24 15:11:01.055520"
+    },
+    {
+      "username": "test",
+      "password_hash": "$2b$12$5Tc8BI086O6qK2U.E8M/rerrkipcyZmbD1Uq.J2PXMSsqXuBV5nEa",
+      "role": "engineer",
+      "display_name": "тестовое_имя",
+      "created_at": "2026-08-24 15:42:44.058175",
+      "last_login": "2026-08-24 15:42:52.277813"
     }
   ]
 }

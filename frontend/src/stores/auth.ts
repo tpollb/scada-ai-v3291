@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store'
+import { writable, derived, get } from 'svelte/store'
 import { navigate } from './ui'
 
 export interface User {
@@ -74,7 +74,6 @@ export function logout() {
 }
 
 export function hasRole(allowedRoles: string[]): boolean {
-  let user: User | null = null
-  currentUser.subscribe(value => { user = value })()
+  const user = get(currentUser)
   return user ? allowedRoles.includes(user.role) : false
 }
