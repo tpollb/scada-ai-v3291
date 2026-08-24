@@ -101,14 +101,16 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # License Middleware
 from core.middleware.license import LicenseMiddleware
+from core.auth.middleware import AuthMiddleware
 app.add_middleware(LicenseMiddleware)
+app.add_middleware(AuthMiddleware)
 
 @app.get("/")
 async def root():
@@ -144,7 +146,27 @@ async def debug_routes():
 # ============================================================================
 # Подключаем роутеры
 # ============================================================================
-from api.routes import chat, config, health, system, docs, energy, analytics, deep_analysis, license  # noqa: E402
+from api.routes import chat, config, health, system, docs, energy, analytics, deep_analysis, license, auth  # noqa: E402, auth
+
+# ============================================================================
+# Middleware (Порядок критически важен!)
+# CORSMiddleware должен быть добавлен ПОСЛЕДНИМ, чтобы быть ПЕРВЫМ в цепочке 
+# выполнения и добавлять CORS-заголовки ко всем ответам, включая ошибки.
+# ============================================================================
+from core.middleware.license import LicenseMiddleware
+app.add_middleware(LicenseMiddleware)
+
+from core.auth.middleware import AuthMiddleware
+app.add_middleware(AuthMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,  # Обязательно True для работы с заголовком Authorization
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(chat.router, tags=["chat"])
 app.include_router(config.router, tags=["config"])
 app.include_router(health.router)
@@ -154,6 +176,7 @@ app.include_router(energy.router)
 app.include_router(analytics.router)
 app.include_router(deep_analysis.router)
 app.include_router(license.router)
+app.include_router(auth.router)
 log.info("All routers registered")
 
 if __name__ == "__main__":

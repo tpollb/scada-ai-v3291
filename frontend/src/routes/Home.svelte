@@ -1,231 +1,237 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
-  import { getHealth } from '../lib/api'
-  import { messages, isLoading, addMessage } from '../stores/chat'
-  import { navigate } from '../stores/ui'
-  import { licenseStatus, fetchLicenseStatus, startSession, endSession } from '../stores/license'
-  import { theme } from '../stores/theme'
-  import Input from '../components/Input.svelte'
-  import LicenseBanner from '../components/LicenseBanner.svelte'
-  import SystemLogsPanel from '../components/SystemLogsPanel.svelte'
-  import DeepAnalysisControls from '../components/DeepAnalysisControls.svelte'
-  import DeepAnalysisResults from '../components/DeepAnalysisResults.svelte'
-  import NarrativePanel from '../components/NarrativePanel.svelte'
-  import WidgetRouter from '../components/WidgetRouter.svelte'
-  import api from '../lib/api'
-  import { 
-    Settings, Volume2, Database, Cpu, Zap, Clock, CheckCircle, XCircle, 
-    AlertCircle, Sun, Moon, Terminal, Wrench, Package, ChevronDown, ChevronUp, 
-    Activity, Shield, ShieldCheck, ShieldAlert, ShieldX 
-  } from 'lucide-svelte'
+import { onMount, onDestroy } from 'svelte'
+import { getHealth } from '../lib/api'
+import { messages, isLoading, addMessage } from '../stores/chat'
+import { navigate } from '../stores/ui'
+import { licenseStatus, fetchLicenseStatus, startSession, endSession } from '../stores/license'
+import { isAuthenticated, currentUser, logout } from '../stores/auth'
+import { theme } from '../stores/theme'
+import Input from '../components/Input.svelte'
+import LicenseBanner from '../components/LicenseBanner.svelte'
+import SystemLogsPanel from '../components/SystemLogsPanel.svelte'
+import DeepAnalysisControls from '../components/DeepAnalysisControls.svelte'
+import DeepAnalysisResults from '../components/DeepAnalysisResults.svelte'
+import NarrativePanel from '../components/NarrativePanel.svelte'
+import WidgetRouter from '../components/WidgetRouter.svelte'
+import LoginModal from '../components/LoginModal.svelte'
+import api from '../lib/api'
+import {
+  Settings, Volume2, Database, Cpu, Zap, Clock, CheckCircle, XCircle,
+  AlertCircle, Sun, Moon, Terminal, Wrench, Package, ChevronDown, ChevronUp,
+  Activity, Shield, ShieldCheck, ShieldAlert, ShieldX
+} from 'lucide-svelte'
 
-  interface SystemInfo {
-    app_name: string
-    app_version: string
-    modules: string[]
-    tools_count: number
-    tools_names?: string[]
-    db_status: 'ok' | 'error' | 'unknown'
-    db_stats: { tags_count: number } | null
-    db_host: string
-    llm_status: 'ok' | 'error' | 'not_configured' | 'unknown'
-    llm_model: string
-    scada_url: string
-    last_health_check: { timestamp: string | null; duration_sec: number | null; score: number | null }
-    capabilities: { text: string; category: string; action?: string }[]
-    server_time: string
+interface SystemInfo {
+  app_name: string
+  app_version: string
+  modules: string[]
+  tools_count: number
+  tools_names?: string[]
+  db_status: 'ok' | 'error' | 'unknown'
+  db_stats: { tags_count: number } | null
+  db_host: string
+  llm_status: 'ok' | 'error' | 'not_configured' | 'unknown'
+  llm_model: string
+  scada_url: string
+  last_health_check: { timestamp: string | null; duration_sec: number | null; score: number | null }
+  capabilities: { text: string; category: string; action?: string }[]
+  server_time: string
+}
+
+let health = $state<any>(null)
+let currentWidgets = $state<any[]>([])
+let collapsedModules = $state(false)
+let collapsedTools = $state(false)
+let lastVoiceText = $state<string | null>(null)
+let systemInfo = $state<SystemInfo | null>(null)
+let showLogsPanel = $state(false)
+let showDeepAnalysisPanel = $state(false)
+let ddaTags = $state<any[]>([])
+let ddaSelectedTags = $state<string[]>([])
+let ddaPeriod = $state<number>(30)
+let ddaIsAnalyzing = $state(false)
+let ddaAnalysisResult = $state<any>(null)
+let ddaError = $state<string | null>(null)
+let ddaForceTab = $state<'overview' | 'correlations' | 'table' | 'interpretation' | null>(null)
+
+onMount(async () => {
+  try { health = await getHealth() } catch (e) { console.error('Failed to fetch health:', e) }
+  try { systemInfo = await api.get('system/info').json<SystemInfo>() } catch (e) { console.error('Failed to fetch system info:', e) }
+  try { await fetchLicenseStatus() } catch (e) { console.error('Failed to fetch license status:', e) }
+  // startSession() теперь вызывается внутри auth.ts при инициализации или логине
+})
+
+onDestroy(() => {
+  endSession()
+})
+
+function handleABResult(result: any) {
+  if (ddaAnalysisResult) {
+    ddaAnalysisResult.ab_comparison = result
+  } else {
+    ddaAnalysisResult = { ab_comparison: result }
   }
+  ddaForceTab = 'interpretation'
+  setTimeout(() => { ddaForceTab = null }, 100)
+}
 
-  let health = $state<any>(null)
-  let currentWidgets = $state<any[]>([])
-  let collapsedModules = $state(false)
-  let collapsedTools = $state(false)
-  let lastVoiceText = $state<string | null>(null)
-  let systemInfo = $state<SystemInfo | null>(null)
-  let showLogsPanel = $state(false)
-  let showDeepAnalysisPanel = $state(false)
-  let ddaTags = $state<any[]>([])
-  let ddaSelectedTags = $state<string[]>([])
-  let ddaPeriod = $state<number>(30)
-  let ddaIsAnalyzing = $state(false)
-  let ddaAnalysisResult = $state<any>(null)
-  let ddaError = $state<string | null>(null)
-  let ddaForceTab = $state<'overview' | 'correlations' | 'table' | 'interpretation' | null>(null)
-
-  onMount(async () => {
-    try { health = await getHealth() } catch (e) { console.error('Failed to fetch health:', e) }
-    try { systemInfo = await api.get('system/info').json<SystemInfo>() } catch (e) { console.error('Failed to fetch system info:', e) }
-    try { await fetchLicenseStatus() } catch (e) { console.error('Failed to fetch license status:', e) }
-  try { await startSession() } catch (e) { console.error('Failed to start session:', e) }
-  })
-
-  function handleABResult(result: any) {
-    if (ddaAnalysisResult) {
-      ddaAnalysisResult.ab_comparison = result
-    } else {
-      ddaAnalysisResult = { ab_comparison: result }
-    }
-    ddaForceTab = 'interpretation'
-    setTimeout(() => { ddaForceTab = null }, 100)
+async function runDDAAnalysis() {
+  if (ddaSelectedTags.length === 0) {
+    ddaError = 'Выберите тег для анализа'
+    return
   }
+  ddaIsAnalyzing = true
+  ddaError = null
+  ddaAnalysisResult = null
+  try {
+    const response = await api.post('api/v1/deep_analysis/run', {
+      json: {
+        tags: ddaSelectedTags,
+        period: ddaPeriod,
+        anomalies: true,
+        correlations: false,
+        seasonality: false,
+        compare_periods: false,
+      }
+    }).json()
+    console.log('🔍 DDA Analysis response:', response)
+    ddaAnalysisResult = response
+  } catch (e: any) {
+    console.error('DDA Analysis failed:', e)
+    ddaError = e?.message || 'Ошибка анализа'
+  } finally {
+    ddaIsAnalyzing = false
+  }
+}
 
-  async function runDDAAnalysis() {
-    if (ddaSelectedTags.length === 0) {
-      ddaError = 'Выберите тег для анализа'
-      return
-    }
-    ddaIsAnalyzing = true
-    ddaError = null
-    ddaAnalysisResult = null
-    try {
-      const response = await api.post('api/v3.3.1.1/deep_analysis/run', {
-        json: {
-          tags: ddaSelectedTags,
-          period: ddaPeriod,
-          anomalies: true,
-          correlations: false,
-          seasonality: false,
-          compare_periods: false,
+async function handleSend(message: string) {
+  const lower = message.toLowerCase()
+  if (lower.includes('логи') || lower.includes('log')) {
+    showLogsPanel = true
+    return
+  }
+  if (lower.includes('глубокий анализ') || lower.includes('deep analysis') || lower.includes('проанализируй тег')) {
+    showDeepAnalysisPanel = true
+    return
+  }
+  if (lower.includes('конфигуратор') || lower.includes('настройки') || lower.includes('настроить')) {
+    navigate('config')
+    return
+  }
+  
+  addMessage('user', message)
+  isLoading.set(true)
+  currentWidgets = []
+  lastVoiceText = null
+  
+  try {
+    if (lower.match(/температур|влажност|температура и влажность|давлен|co2|voc|параметр.*сред/i)) {
+      try {
+        const resp: any = await api.get('health/metrics-summary').json()
+        if (resp && resp.params) {
+          addMessage('assistant', resp.text || 'Сводка по параметрам среды')
+          currentWidgets = [{ type: 'environmental_panel', data: resp.params, size: 'wide' }]
+          return
         }
-      }).json()
-      console.log('🔍 DDA Analysis response:', response)
-      ddaAnalysisResult = response
-    } catch (e: any) {
-      console.error('DDA Analysis failed:', e)
-      ddaError = e?.message || 'Ошибка анализа'
-    } finally {
-      ddaIsAnalyzing = false
-    }
-  }
-
-  async function handleSend(message: string) {
-    const lower = message.toLowerCase()
-    if (lower.includes('логи') || lower.includes('log')) {
-      showLogsPanel = true
-      return
-    }
-    if (lower.includes('глубокий анализ') || lower.includes('deep analysis') || lower.includes('проанализируй тег')) {
-      showDeepAnalysisPanel = true
-      return
-    }
-    if (lower.includes('конфигуратор') || lower.includes('настройки') || lower.includes('настроить')) {
-      navigate('config')
-      return
+      } catch (e) {
+        console.error('Metrics summary failed:', e)
+      }
     }
     
-    addMessage('user', message)
-    isLoading.set(true)
-    currentWidgets = []
-    lastVoiceText = null
+    const resp: any = await api.post('chat', { json: { message } }).json()
+    addMessage('assistant', resp.response)
     
-    try {
-      if (lower.match(/температур|влажност|температура и влажность|давлен|co2|voc|параметр.*сред/i)) {
-        try {
-          const resp: any = await api.get('health/metrics-summary').json()
-          if (resp && resp.params) {
-            addMessage('assistant', resp.text || 'Сводка по параметрам среды')
-            currentWidgets = [{ type: 'environmental_panel', data: resp.params, size: 'wide' }]
-            return
-          }
-        } catch (e) {
-          console.error('Metrics summary failed:', e)
-        }
+    console.log('Chat response:', {
+      status: resp.status,
+      has_visual: !!resp.visual,
+      visual_widgets: resp.visual?.widgets,
+      widgets_count: resp.visual?.widgets?.length || 0
+    })
+    
+    if (resp.visual?.widgets && resp.visual.widgets.length > 0) {
+      currentWidgets = resp.visual.widgets
+    }
+    
+    if (resp.voice?.text) {
+      lastVoiceText = resp.voice.text
+      speak(resp.voice.text)
+    }
+    
+    try { systemInfo = await api.get('system/info').json<SystemInfo>() } catch {}
+  } catch (e: any) {
+    console.error('Chat error:', e)
+    addMessage('system', `Ошибка: ${e?.message || 'неизвестная'}`)
+  } finally {
+    isLoading.set(false)
+  }
+}
+
+function handleCloseWidgets() {
+  currentWidgets = []
+}
+
+function speak(text: string) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel()
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = 'ru-RU'
+    utter.rate = 1.0
+    window.speechSynthesis.speak(utter)
+  }
+}
+
+function handleCapability(cap: any) {
+  if (cap.action === 'config') {
+    navigate('config')
+  } else {
+    handleSend(cap.text)
+  }
+}
+
+function formatTime(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleTimeString('ru-RU')
+}
+
+const capabilities = $derived(() => {
+  const caps: any[] = []
+  if (systemInfo?.modules?.includes('health')) {
+    caps.push({ text: 'покажи здоровье здания', category: 'Анализ' })
+    caps.push({ text: 'проанализируй системный лог', category: 'Анализ' })
+    caps.push({ text: 'покажи логи', category: 'Система', action: 'logs' })
+  }
+  if (systemInfo?.modules?.includes('analytics')) {
+    caps.push({ text: 'покажи аналитику', category: 'Анализ', action: 'analytics_panel' })
+  }
+  if (systemInfo?.modules?.includes('schedules')) {
+    caps.push({ text: 'расписания', category: 'Планирование' })
+  }
+  caps.push({ text: 'открой конфигуратор', category: 'Настройки', action: 'config' })
+  return caps
+})
+
+$effect(() => {
+  if (showDeepAnalysisPanel && ddaTags.length === 0) {
+    console.log('🔄 Loading DDA tags...')
+    api.get('api/v1/deep_analysis/tags').json().then((tags: any[]) => {
+      console.log('✓ DDA tags loaded:', tags.length)
+      ddaTags = tags
+      if (tags.length > 0 && ddaSelectedTags.length === 0) {
+        ddaSelectedTags = [tags[0].tag_name]
       }
-      
-      const resp: any = await api.post('chat', { json: { message } }).json()
-      addMessage('assistant', resp.response)
-      
-      console.log('Chat response:', {
-        status: resp.status,
-        has_visual: !!resp.visual,
-        visual_widgets: resp.visual?.widgets,
-        widgets_count: resp.visual?.widgets?.length || 0
-      })
-      
-      if (resp.visual?.widgets && resp.visual.widgets.length > 0) {
-        currentWidgets = resp.visual.widgets
-      }
-      
-      if (resp.voice?.text) {
-        lastVoiceText = resp.voice.text
-        speak(resp.voice.text)
-      }
-      
-      try { systemInfo = await api.get('system/info').json<SystemInfo>() } catch {}
-    } catch (e: any) {
-      console.error('Chat error:', e)
-      addMessage('system', `Ошибка: ${e?.message || 'неизвестная'}`)
-    } finally {
-      isLoading.set(false)
-    }
+    }).catch((e: any) => {
+      console.error('Failed to fetch DDA tags:', e)
+      ddaError = 'Не удалось загрузить список тегов'
+    })
   }
-
-  function handleCloseWidgets() {
-    currentWidgets = []
-  }
-
-  function speak(text: string) {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      const utter = new SpeechSynthesisUtterance(text)
-      utter.lang = 'ru-RU'
-      utter.rate = 1.0
-      window.speechSynthesis.speak(utter)
-    }
-  }
-
-  function handleCapability(cap: any) {
-    if (cap.action === 'config') {
-      navigate('config')
-    } else {
-      handleSend(cap.text)
-    }
-  }
-
-  function formatTime(iso: string | null): string {
-    if (!iso) return '—'
-    return new Date(iso).toLocaleTimeString('ru-RU')
-  }
-
-  const capabilities = $derived(() => {
-    const caps: any[] = []
-    if (systemInfo?.modules?.includes('health')) {
-      caps.push({ text: 'покажи здоровье здания', category: 'Анализ' })
-      caps.push({ text: 'проанализируй системный лог', category: 'Анализ' })
-      caps.push({ text: 'покажи логи', category: 'Система', action: 'logs' })
-    }
-    if (systemInfo?.modules?.includes('analytics')) {
-      caps.push({ text: 'покажи аналитику', category: 'Анализ', action: 'analytics_panel' })
-    }
-    if (systemInfo?.modules?.includes('schedules')) {
-      caps.push({ text: 'расписания', category: 'Планирование' })
-    }
-    caps.push({ text: 'открой конфигуратор', category: 'Настройки', action: 'config' })
-    return caps
-  })
-
-  $effect(() => {
-    if (showDeepAnalysisPanel && ddaTags.length === 0) {
-      console.log('🔄 Loading DDA tags...')
-      api.get('api/v3.3.1.1/deep_analysis/tags').json().then((tags: any[]) => {
-        console.log('✓ DDA tags loaded:', tags.length)
-        ddaTags = tags
-        if (tags.length > 0 && ddaSelectedTags.length === 0) {
-          ddaSelectedTags = [tags[0].tag_name]
-        }
-      }).catch((e: any) => {
-        console.error('Failed to fetch DDA tags:', e)
-        ddaError = 'Не удалось загрузить список тегов'
-      })
-    }
-  })
+})
 </script>
 
 <div class="flex flex-col h-screen bg-neutral-50 dark:bg-neutral-900 transition-colors">
   <header class="bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 flex items-center justify-between flex-shrink-0 transition-colors">
     <div class="flex items-center gap-3">
       <h1 class="text-base font-mono text-neutral-500 dark:text-neutral-400 tracking-tight">
-        SCADA.AI <span class="text-neutral-400 dark:text-neutral-500">v3.3.1.1</span>
+        SCADA.AI <span class="text-neutral-400 dark:text-neutral-500">v3.3.2.0</span>
       </h1>
     </div>
     
@@ -253,10 +259,20 @@
       <button type="button" onclick={() => navigate('config')} class="p-2 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-neutral-700 dark:text-neutral-300" title="Конфигуратор">
         <Settings size={18} />
       </button>
+      
       <div class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 ml-2">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>
         <span class="font-medium">Online</span>
       </div>
+
+      {#if $isAuthenticated && $currentUser}
+        <div class="flex items-center gap-3 ml-4 pl-4 border-l border-neutral-300 dark:border-neutral-600">
+          <span class="text-sm font-medium text-neutral-800 dark:text-neutral-200">{$currentUser.display_name}</span>
+          <button type="button" onclick={logout} class="text-xs px-3 py-1.5 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 rounded transition">
+            Выход
+          </button>
+        </div>
+      {/if}
     </div>
   </header>
 
@@ -496,4 +512,8 @@
       {/if}
     </aside>
   </div>
+
+  {#if !$isAuthenticated}
+    <LoginModal />
+  {/if}
 </div>

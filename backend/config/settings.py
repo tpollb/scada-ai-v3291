@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     )
     # App
     app_name: str = "SCADA.AI v3"
-    app_version: str = "3.3.1.1"
+    app_version: str = "3.3.2.0"
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = True
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     longitude: float = 59.9417
     
     # Security
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "scada-ai-super-secret-jwt-key-32-bytes-min!"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440
     
