@@ -16,6 +16,7 @@ ALLOWED_FILES = [
     "CHAT_EXAMPLES.md",
     "ARCHITECTURE.md",
     "CHANGELOG.md",
+    "auth.md",
     "ANALYTICS.md",
     "DDA.md",
     "SEASON_ANALISYS.md",

@@ -1,4 +1,4 @@
-"""SCADA.AI v3.3.1.1 — Main application"""
+"""SCADA.AI v3.3.2.2 — Main application"""
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

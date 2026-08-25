@@ -1,7 +1,7 @@
-# SCADA.AI v3.3.0.1.1 — Полный контекст для разработки
+# SCADA.AI v3.3.2.1 — Полный контекст для разработки
 
-**Версия**: 3.2.9.1
-**Дата последнего обновления**: 2026-07-08
+**Версия**: 3.3.2.1
+**Дата последнего обновления**: 2026-08-25
 **Разработчик**: Усков Сергей Евгеньевич
 **Назначение**: AI-ассистент для оператора SCADA-системы промышленного здания
 
@@ -11,7 +11,9 @@
 
 1. [Обзор системы](#обзор-системы)
 2. [Архитектура](#архитектура)
-3. [Структура файлов](#структура-файлов)
+3. [Ролевая модель](#ролевая-модель)
+[Система лицензирования](#система-лицензирования)
+[Структура файлов](#структура-файлов)
 4. [Backend детали](#backend-детали)
 5. [Frontend детали](#frontend-детали)
 6. [Модули](#модули)
@@ -166,6 +168,129 @@ SCADA.AI — это модульная система AI-ассистента д
 
 ---
 
+
+## Ролевая модель
+
+### Роли и права доступа
+
+| Роль | Описание | Доступ |
+|------|----------|--------|
+| `admin` | Полный доступ | Все функции, включая управление пользователями и лицензиями |
+| `engineer` | Инженер | Конфигуратор, DDA, логи, чат (без управления пользователями) |
+| `operator` | Оператор | Чат, базовые функции (без конфигуратора и DDA) |
+| `boss` | Руководитель | Только просмотр (без настроек и анализов) |
+
+### Матрица доступов
+
+| Функция | admin | engineer | operator | boss |
+|---------|-------|----------|----------|------|
+| Чат с AI | Да | Да | Да | Да |
+| Здоровье здания | Да | Да | Да | Да |
+| Просмотр логов | Да | Да | Да | Нет |
+| DDA (Deep Analysis) | Да | Да | Нет | Нет |
+| Конфигуратор | Да | Да | Нет | Нет |
+| Управление пользователями | Да | Нет | Нет | Нет |
+| Загрузка лицензии | Да | Нет | Нет | Нет |
+
+### Файлы
+
+- `backend/core/auth/models.py` — User, UserRole (Enum)
+- `backend/core/auth/password.py` — bcrypt хеширование
+- `backend/core/auth/jwt_utils.py` — создание/проверка JWT
+- `backend/core/auth/storage.py` — UserStorage (чтение/запись users.json)
+- `backend/core/auth/middleware.py` — AuthMiddleware (проверка токенов)
+- `backend/core/auth/dependencies.py` — get_current_user, require_role
+- `backend/api/routes/auth.py` — endpoints авторизации и управления пользователями
+
+### Хранилище пользователей
+
+- Файл: `backend/data/users.json`
+- Пароли хешируются через bcrypt
+- 4 предустановленных пользователя: admin, engineer, operator, boss
+- Пароли по умолчанию: admin123, engineer123, operator123, boss123
+
+### AuthMiddleware
+
+- Проверяет `Authorization: Bearer <token>` на всех запросах
+- Пропускает OPTIONS запросы (CORS preflight)
+- Публичные пути: `/`, `/health`, `/debug/routes`, `/api/v1/auth/login`, `/system/info`, `/api/v1/license/status`
+- Устанавливает `request.state.user` для использования в endpoints
+- Возвращает 401 при отсутствии/невалидности токена
+
+### Ролевые зависимости
+
+Зависимость `require_role(*roles)` в `backend/core/auth/dependencies.py` проверяет роль пользователя из `request.state.user` и возвращает 403 если роль не входит в список разрешённых.
+
+Использование в роутерах:
+
+    router = APIRouter(
+        prefix="/config",
+        dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.ENGINEER))]
+    )
+
+### Защищённые роуты
+
+- `/config/*` — ADMIN + ENGINEER
+- `/api/v1/deep_analysis/*` — ADMIN + ENGINEER
+- `/api/v1/auth/users` — только ADMIN
+- `/api/v1/auth/users/{username}` — только ADMIN (с защитой от удаления себя)
+- `/api/v1/license/upload` — только ADMIN
+
+### Frontend (скрытие UI)
+
+Условный рендеринг по роли через `{#if $currentUser?.role === 'admin'}`.
+
+## Система лицензирования
+
+### Типы лицензий
+
+| Тип | Описание | Модули | Макс. пользователей |
+|-----|----------|--------|---------------------|
+| `trial` | Пробная (ограниченный срок) | hello, health | 1 |
+| `basic` | Базовая | + logs, energy_* | 3 |
+| `standard` | Стандартная | + analytics, deep_analysis | 10 |
+| `enterprise` | Корпоративная | все модули | 100+ |
+
+### Механизм работы
+
+**Offline валидация (RSA-2048):**
+- Лицензия — файл `.lic` с JWT-токеном, подписанным приватным ключом
+- Публичный ключ хранится в `settings.py` (`license_public_key`)
+- Валидация происходит при старте приложения и на каждом запросе
+
+**Grace Period:**
+- 3 дня после истечения лицензии (настраивается через `LICENSE_GRACE_PERIOD_DAYS`)
+- Визуальные предупреждения в UI (баннер `LicenseBanner.svelte`)
+- Полный функционал сохраняется в течение grace period
+- После grace period — HTTP 402 на все запросы
+
+**Управление сессиями:**
+- `POST /api/v1/license/session/start` — создание сессии (возвращает session_id)
+- `POST /api/v1/license/session/heartbeat` — продление (каждые 30 сек от фронтенда)
+- `POST /api/v1/license/session/end` — завершение сессии
+- In-memory storage (SessionTracker), таймаут неактивности 30 минут
+- Лимит одновременных подключений согласно лицензии
+- При превышении лимита — HTTP 403
+
+### Файлы лицензирования
+
+**Backend:**
+- `backend/core/license/models.py` — License, LicenseType (Enum)
+- `backend/core/license/validator.py` — RSA-2048 валидация подписи
+- `backend/core/license/manager.py` — LicenseManager (загрузка, проверка)
+- `backend/core/license/session_tracker.py` — SessionTracker (in-memory сессии)
+- `backend/core/middleware/license.py` — LicenseMiddleware
+- `backend/api/routes/license.py` — endpoints лицензий и сессий
+
+**Frontend:**
+- `frontend/src/stores/license.ts` — licenseStatus, sessionId, startSession, endSession
+- `frontend/src/components/LicensePanel.svelte` — просмотр статуса, загрузка .lic
+- `frontend/src/components/LicenseBanner.svelte` — баннер предупреждений
+
+**Инструменты:**
+- `scripts/generate_keys.py` — генерация RSA-2048 ключей
+- `scripts/generate_license.py` — генерация файлов `.lic`
+
 ## Структура файлов
 
 ### Корневая структура
@@ -183,7 +308,9 @@ SCADA.AI — это модульная система AI-ассистента д
 │   │       ├── docs.py         # GET /docs/* (whitelist MD файлов)
 │   │       ├── analytics.py    # GET /analytics/report
 │   │       ├── energy.py       # GET /energy/*
-│   │       └── deep_analysis.py # POST /api/v1/deep_analysis/*
+│   │       ├── deep_analysis.py # POST /api/v1/deep_analysis/*
+ │       ├── auth.py         # Авторизация + управление пользователями
+ │       └── license.py      # Управление лицензией и сессиями
 │   ├── core/
 │   │   ├── module_registry.py  # Автообнаружение модулей
 │   │   ├── tool_executor.py    # Dispatch tool calls

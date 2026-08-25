@@ -44,7 +44,7 @@ function handleKeydown(event: KeyboardEvent) {
       </div>
       <div>
         <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Вход в систему</h2>
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">SCADA.AI v3.3.2.0</p>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">SCADA.AI v3.3.2.2</p>
       </div>
     </div>
     
