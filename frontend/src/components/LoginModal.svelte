@@ -1,95 +1,106 @@
 <script lang="ts">
+import { onMount } from 'svelte'
 import { login } from '../stores/auth'
-import { Shield } from 'lucide-svelte'
+import api from '../lib/api'
 
 let username = $state('')
 let password = $state('')
 let isLoading = $state(false)
 let error = $state<string | null>(null)
+let appVersion = $state('...')
+
+onMount(async () => {
+    try {
+        const info = await api.get('system/info').json<{ app_version: string }>()
+        appVersion = info.app_version
+    } catch (e) {
+        console.error('Failed to fetch system info:', e)
+        appVersion = '3.3.2.3'
+    }
+})
 
 async function handleSubmit() {
-  if (!username || !password) {
-    error = 'Введите логин и пароль'
-    return
-  }
-  
-  isLoading = true
-  error = null
-  
-  const result = await login(username, password)
-  
-  if (result.success) {
-    // При успехе стор обновится, Home.svelte автоматически удалит этот компонент из DOM
-    username = ''
-    password = ''
-  } else {
-    error = result.error || 'Неверный логин или пароль'
-  }
-  
-  isLoading = false
+    if (!username || !password) {
+        error = 'Введите логин и пароль'
+        return
+    }
+    isLoading = true
+    error = null
+    const result = await login(username, password)
+    if (result.success) {
+        username = ''
+        password = ''
+    } else {
+        error = result.error || 'Неверный логин или пароль'
+    }
+    isLoading = false
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    handleSubmit()
-  }
+    if (event.key === 'Enter') {
+        handleSubmit()
+    }
 }
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-  <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-2xl w-full max-w-md p-6 border border-neutral-200 dark:border-neutral-700">
-    <div class="flex items-center gap-3 mb-6">
-      <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-        <Shield size={24} class="text-blue-600 dark:text-blue-400" />
-      </div>
-      <div>
-        <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Вход в систему</h2>
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">SCADA.AI v3.3.2.2</p>
-      </div>
-    </div>
-    
-    <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Логин</label>
-        <input 
-          type="text" 
-          bind:value={username} 
-          onkeydown={handleKeydown}
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="admin"
-          autocomplete="username"
-        />
-      </div>
-      
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Пароль</label>
-        <input 
-          type="password" 
-          bind:value={password} 
-          onkeydown={handleKeydown}
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="••••••••"
-          autocomplete="current-password"
-        />
-      </div>
-      
-      {#if error}
-        <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-700 dark:text-red-300">
-          {error}
+<!-- Контейнер с фоновым изображением и затемнением -->
+<div class="fixed inset-0 z-50 flex items-center justify-center">
+    <!-- Фоновое изображение -->
+    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('/media/logo.gif')"></div>
+    <!-- Затемнение поверх картинки -->
+    <div class="absolute inset-0 bg-black/70"></div>
+
+    <!-- Карточка входа -->
+    <div class="relative z-10 w-full max-w-sm p-5 bg-neutral-900/85 backdrop-blur-md rounded-lg shadow-2xl border border-neutral-700/50">
+        <!-- Заголовок AI.SCADA -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-mono tracking-tight mb-1">
+                <span class="text-blue-500">AI</span><span class="text-neutral-300">.SCADA</span>
+            </h1>
+            <p class="text-sm text-neutral-400">Вход в систему</p>
         </div>
-      {/if}
-      
-      <button 
-        type="submit" 
-        disabled={isLoading}
-        class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800"
-      >
-        {isLoading ? 'Вход...' : 'Войти'}
-      </button>
-    </form>
-    
-    <div class="mt-4 text-center text-xs text-neutral-500 dark:text-neutral-400">
-      Демо-доступ: admin / admin123
+
+        <!-- Форма входа -->
+        <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-3">
+            <div>
+                <label class="block text-sm text-neutral-300 mb-1">Логин</label>
+                <input
+                    type="text"
+                    bind:value={username}
+                    onkeydown={handleKeydown}
+                    class="w-full px-3 py-1.5 border border-neutral-600 rounded-md bg-neutral-800 text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autocomplete="off"
+                />
+            </div>
+            <div>
+                <label class="block text-sm text-neutral-300 mb-1">Пароль</label>
+                <input
+                    type="password"
+                    bind:value={password}
+                    onkeydown={handleKeydown}
+                    class="w-full px-3 py-1.5 border border-neutral-600 rounded-md bg-neutral-800 text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autocomplete="off"
+                />
+            </div>
+
+            {#if error}
+                <div class="p-2.5 bg-red-900/20 border border-red-800 rounded-md text-sm text-red-300">
+                    {error}
+                </div>
+            {/if}
+
+            <button
+                type="submit"
+                disabled={isLoading}
+                class="w-full py-2 px-4 bg-neutral-900 border border-blue-500 text-neutral-100 rounded-md transition hover:bg-neutral-800 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-neutral-900"
+            >
+                {isLoading ? 'Вход...' : 'Войти'}
+            </button>
+        </form>
+
+        <!-- Версия внизу карточки -->
+        <div class="mt-5 text-center text-xs font-mono tracking-tight text-neutral-500">
+            v{appVersion}
+        </div>
     </div>
-  </div>
 </div>
