@@ -456,7 +456,7 @@ async function saveLogsPollInterval() {
     </button>
     <div class="flex items-center gap-3 flex-1">
       <h1 class="text-xl font-semibold text-neutral-900">Конфигуратор</h1>
-      <span class="text-sm text-neutral-500">v3.3.2.3</span>
+      <span class="text-sm text-neutral-500">v3.3.3.0</span>
     </div>
     <div class="flex gap-1 bg-neutral-100 rounded p-1 overflow-x-auto">
       <button type="button" onclick={() => activeTab = 'modules'} class="px-4 py-1.5 text-sm font-medium rounded transition {activeTab === 'modules' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'}">
