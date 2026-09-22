@@ -144,9 +144,13 @@
     isCollapsed = false
 
     try {
+      const token = localStorage.getItem('scada_ai_token')
       const response = await fetch('http://localhost:8081/api/v1/deep_analysis/interpret/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ analysis_result: analysisResult })
       })
 
