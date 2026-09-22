@@ -1,3 +1,7 @@
+// Динамическое определение хоста API
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 
+    `${window.location.protocol}//${window.location.hostname}:8081`
+
 import { writable, get } from 'svelte/store'
 import api from '../lib/api'
 
@@ -21,7 +25,7 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 
 export async function fetchLicenseStatus() {
     try {
-        const response = await fetch('http://localhost:8081/api/v1/license/status')
+        const response = await fetch(`${API_BASE}/api/v1/license/status`)
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`)
         }
@@ -40,7 +44,7 @@ export async function uploadLicense(file: File): Promise<{success: boolean, mess
         const formData = new FormData()
         formData.append('file', file)
         
-        const response = await fetch('http://localhost:8081/api/v1/license/upload', {
+        const response = await fetch(`${API_BASE}/api/v1/license/upload`, {
             method: 'POST',
             body: formData
         })

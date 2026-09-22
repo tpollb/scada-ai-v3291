@@ -1,3 +1,7 @@
+// Динамическое определение хоста API
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 
+    `${window.location.protocol}//${window.location.hostname}:8081`
+
 import { writable, derived, get } from 'svelte/store'
 import { navigate } from './ui'
 
@@ -36,7 +40,7 @@ export const isAuthenticated = derived(
 
 export async function login(username: string, password: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('http://localhost:8081/api/v1/auth/login', {
+    const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })

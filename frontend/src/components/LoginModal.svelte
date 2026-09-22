@@ -15,7 +15,7 @@ onMount(async () => {
         appVersion = info.app_version
     } catch (e) {
         console.error('Failed to fetch system info:', e)
-        appVersion = '3.3.2.3'
+        appVersion = '3.3.3.0'
     }
 })
 

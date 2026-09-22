@@ -1,5 +1,41 @@
 # Changelog
 
+## [3.3.3.0] - 2026-09-22
+
+### 🔥 Мультидоступ и подготовка к продакшену
+
+**Исправлено:**
+- Фикс 401 на DDA endpoints — добавлен Authorization заголовок к нативным fetch запросам
+  - `DDAInterpretation.svelte` — интерпретация результатов
+  - `ABComparisonModal.svelte` — A/B сравнение
+- Убран захардкоженный `localhost:8081` из всех фронтенд-файлов
+  - `api.ts` — основной HTTP клиент
+  - `auth.ts` — логин
+  - `license.ts` — статус и загрузка лицензии
+  - `DDAInterpretation.svelte` — стриминг интерпретации
+  - `ABComparisonModal.svelte` — A/B анализ
+  - Теперь хост определяется динамически из `window.location` или `.env`
+- Фикс `crypto.randomUUID` для non-secure contexts (http://IP:port)
+  - Добавлен полифилл `generateId()` в `chat.ts`
+- CORS настроен для мультидоступа
+  - `allow_origins=["*"]` для разработки и демо
+  - `allow_credentials=False` (JWT в заголовке, не в cookies)
+
+**Добавлено:**
+- Поддержка подключения с других машин по сети
+- Динамическое определение хоста API через `VITE_API_BASE_URL` или `window.location`
+
+**Проверено:**
+- Мультидоступ работает: логин, DDA, чат с другой машины
+- Все модули доступны по сети (health, analytics, deep_analysis, energy)
+
+### Технические детали
+- `frontend/src/lib/api.ts` — `API_BASE` вместо хардкода
+- `frontend/src/stores/chat.ts` — полифилл `generateId()`
+- `backend/main.py` — CORS `allow_origins=["*"]`, `allow_credentials=False`
+
+
+
 ## [3.3.2.3] - 2026-08-25
 
 ### Обновлена страница входа

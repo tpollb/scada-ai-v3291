@@ -1,4 +1,7 @@
 <script lang="ts">
+// Динамическое определение хоста API
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 
+    `${window.location.protocol}//${window.location.hostname}:8081`
   import { Copy, RefreshCw, Loader2, CheckCircle, AlertCircle, FileText, X, ChevronDown } from 'lucide-svelte'
 
   interface Props {
@@ -145,7 +148,7 @@
 
     try {
       const token = localStorage.getItem('scada_ai_token')
-      const response = await fetch('http://localhost:8081/api/v1/deep_analysis/interpret/stream', {
+      const response = await fetch(`${API_BASE}/api/v1/deep_analysis/interpret/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

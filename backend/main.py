@@ -1,4 +1,4 @@
-"""SCADA.AI v3.3.2.3 — Main application"""
+"""SCADA.AI v3.3.3.0 — Main application"""
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,8 +100,8 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -161,8 +161,8 @@ app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,  # Обязательно True для работы с заголовком Authorization
+    allow_origins=["*"],
+    allow_credentials=False,  # Обязательно True для работы с заголовком Authorization
     allow_methods=["*"],
     allow_headers=["*"],
 )
